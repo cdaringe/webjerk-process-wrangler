@@ -52,10 +52,12 @@ function teardown () {
   })
 }
 
-module.exports = {
-  name: 'webjerk-process-wrangler',
-  pre: setup,
-  post: teardown
+module.exports = function registerProcessWrangler () {
+  return {
+    name: 'webjerk-process-wrangler',
+    pre: setup,
+    post: teardown
+  }
 }
 // setup()
 // .then(() => module.exports.plugin.main())
