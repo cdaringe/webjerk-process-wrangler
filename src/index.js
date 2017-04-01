@@ -24,7 +24,7 @@ function removePIDFile () {
   try { fs.unlinkSync(pidFile) } catch (_err) {}
 }
 function setup (config) {
-  pidFile = path.join(__dirname, `${path.basename(config.cp.bin)}.pid`)
+  pidFile = path.join(process.cwd(), `${path.basename(config.cp.bin)}.pid`)
   return new Promise((res, rej) => { // eslint-disable-line
     function fail (err, code) {
       removePIDFile()
@@ -34,6 +34,7 @@ function setup (config) {
       removePIDFile()
       var srv = cp.spawn(config.cp.bin, config.cp.args || [], config.cp.opts || { cwd: __dirname })
       fs.writeFileSync(pidFile, srv.pid)
+      console.log(`wrote PID file: ${pidFile}`)
       srv.on('error', code => fail(null, code))
       srv.on('exit', code => fail(null, code))
       setTimeout(() => res(), 5000)
@@ -43,6 +44,7 @@ function setup (config) {
   })
 }
 function teardown () {
+  console.log(`removing pid file ${pidFile}`)
   return readFileAsync(pidFile)
   .then(pid => parseInt(pid, 10))
   .then(pid => {
