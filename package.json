@@ -1,12 +1,11 @@
 {
   "name": "webjerk-process-wrangler",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "add webjerk hooks to launch & teardown a process",
   "main": "src/index.js",
   "repository": "git@github.com:cdaringe/webjerk",
   "author": "cdaringe <christopher.dieringer@gmail.com>",
   "license": "MIT",
   "dependencies": {
-    "bluebird": "^3.5.0"
   }
 }

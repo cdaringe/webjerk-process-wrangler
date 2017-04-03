@@ -3,9 +3,6 @@
 var cp = require('child_process')
 var path = require('path')
 var fs = require('fs')
-var bb = require('bluebird')
-var readFileAsync = bb.promisify(fs.readFile)
-var pidFile = null
 
 function ensureProcessIsGone (pid) {
   return new Promise(function (resolve, reject) {
