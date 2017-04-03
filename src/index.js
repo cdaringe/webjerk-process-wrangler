@@ -37,7 +37,8 @@ function createProcessLifecycleHooks () {
       return new Promise((res, rej) => { // eslint-disable-line
         var exit = (err, code, stderr) => {
           removePIDFile(this._pidFile)
-          if (err || code) rej(err || new Error(stderr || `${config.cp.bin} exited to boot ${code}`))
+          if (err || code) return rej(err || new Error(stderr || `${config.cp.bin} exited to boot ${code}`))
+          return res()
         }
         try {
           removePIDFile(this._pidFile)
