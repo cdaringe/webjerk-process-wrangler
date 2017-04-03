@@ -20,47 +20,60 @@ function ensureProcessIsGone (pid) {
     }, 250)
   })
 }
-function removePIDFile () {
+function removePIDFile (pidFile) {
+  var pid = null
+  try {
+    pid = parseInt(fs.readFileSync(pidFile).toString(), 10)
+  } catch (_err) {}
   try { fs.unlinkSync(pidFile) } catch (_err) {}
+  return pid
 }
-function setup (config) {
-  pidFile = path.join(process.cwd(), `${path.basename(config.cp.bin)}.pid`)
-  return new Promise((res, rej) => { // eslint-disable-line
-    function fail (err, code) {
-      removePIDFile()
-      rej(err || new Error(`httpster failed to boot ${code}`))
+
+function createProcessLifecycleHooks () {
+  return {
+    _pidFile: null,
+    setup (config) {
+      this._pidFile = path.join(process.cwd(), `${path.basename(config.cp.bin)}.pid`)
+      return new Promise((res, rej) => { // eslint-disable-line
+        var exit = (err, code, stderr) => {
+          removePIDFile(this._pidFile)
+          if (err || code) rej(err || new Error(stderr || `${config.cp.bin} exited to boot ${code}`))
+        }
+        try {
+          removePIDFile(this._pidFile)
+          var stderr = ''
+          var srv = cp.spawn(config.cp.bin, config.cp.args || [], config.cp.opts || { cwd: __dirname })
+          if (srv.stderr) srv.stderr.on('data', chunk => { stderr += chunk })
+          fs.writeFileSync(this._pidFile, srv.pid)
+          console.log(`wrote PID file: ${this._pidFile}`)
+          srv.on('error', code => exit(null, code, stderr))
+          srv.on('exit', code => {
+            return exit(null, code, stderr)
+          })
+          setTimeout(() => res(), 5000)
+        } catch (err) {
+          return exit(err)
+        }
+      })
+    },
+    teardown () {
+      console.log(`removing pid file ${this._pidFile}`)
+      return Promise.resolve()
+      .then(() => removePIDFile(this._pidFile))
+      .then(pid => {
+        var p = ensureProcessIsGone(pid)
+        process.kill(pid, 'SIGTERM')
+        return p
+      })
     }
-    try {
-      removePIDFile()
-      var srv = cp.spawn(config.cp.bin, config.cp.args || [], config.cp.opts || { cwd: __dirname })
-      fs.writeFileSync(pidFile, srv.pid)
-      console.log(`wrote PID file: ${pidFile}`)
-      srv.on('error', code => fail(null, code))
-      srv.on('exit', code => fail(null, code))
-      setTimeout(() => res(), 5000)
-    } catch (err) {
-      return fail(err)
-    }
-  })
-}
-function teardown () {
-  console.log(`removing pid file ${pidFile}`)
-  return readFileAsync(pidFile)
-  .then(pid => parseInt(pid, 10))
-  .then(pid => {
-    var p = ensureProcessIsGone(pid)
-    process.kill(pid, 'SIGTERM')
-    return p
-  })
+  }
 }
 
 module.exports = function registerProcessWrangler () {
+  var hooks = createProcessLifecycleHooks()
   return {
     name: 'webjerk-process-wrangler',
-    pre: setup,
-    post: teardown
+    pre: hooks.setup,
+    post: hooks.teardown
   }
 }
-// setup()
-// .then(() => module.exports.plugin.main())
-// .then(() => teardown())
